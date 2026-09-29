@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // --------------------------------------------------------------------------
+    // users collection: users/{userId}
+    // - Document ID must be the Firebase Auth UID
+    // - A user can read, create, and update only their own document
+    // - Deletions are disallowed
+    // --------------------------------------------------------------------------
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
+      allow update: if isOwner(userId);
+      allow delete: if false;
+    }
+
+    // --------------------------------------------------------------------------
+    // shops collection: shops/{shopId}
+    // - Creation: Only authenticated users can create a shop where ownerId matches their UID
+    // - Read: Only the shop owner or a user assigned to this shop can view it
+    // - Update / Delete: Only the shop owner can modify or delete the shop
+    // - Strictly isolates multi-tenant business data between distinct shops
+    // --------------------------------------------------------------------------
+    match /shops/{shopId} {
+      allow read: if isAuthenticated() && (
+        resource.data.ownerId == request.auth.uid ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId == shopId
+      );
+      
+      allow create: if isAuthenticated() && 
+        request.resource.data.ownerId == request.auth.uid;
+        
+      allow update: if isAuthenticated() && 
+        resource.data.ownerId == request.auth.uid;
+        
+      allow delete: if isAuthenticated() && 
+        resource.data.ownerId == request.auth.uid;
+    }
+
+    // --------------------------------------------------------------------------
+    // products collection: products/{productId}
+    // - Every product belongs to exactly one shopId
+    // - Access is restricted strictly to users assigned to that shop
+    // - Stock quantity cannot be negative
+    // --------------------------------------------------------------------------
+    match /products/{productId} {
+      allow read: if isAuthenticated() && (
+        resource.data.shopId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId
+      );
+
+      allow create: if isAuthenticated() &&
+        request.resource.data.shopId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId &&
+        request.resource.data.stockQuantity >= 0;
+
+      allow update: if isAuthenticated() &&
+        resource.data.shopId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId &&
+        request.resource.data.shopId == resource.data.shopId &&
+        request.resource.data.stockQuantity >= 0;
+
+      allow delete: if isAuthenticated() &&
+        resource.data.shopId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId;
+    }
+
+    // --------------------------------------------------------------------------
+    // shops/{shopId}/counters/{counterId}
+    // - Subcollection for shop counters (such as sales invoice sequence)
+    // --------------------------------------------------------------------------
+    match /shops/{shopId}/counters/{counterId} {
+      allow read, write: if isAuthenticated() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId == shopId
+      );
+    }
+
+    // --------------------------------------------------------------------------
+    // sales collection: sales/{saleId}
+    // - Every sale document belongs to exactly one shopId
+    // - Historical snapshot of sale, items, and financial values
+    // - Access is restricted strictly to users belonging to that shop
+    // - Sales are append-only; modifications/deletions of completed sales are disallowed
+    // --------------------------------------------------------------------------
+    match /sales/{saleId} {
+      allow read: if isAuthenticated() && (
+        resource.data.shopId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId
+      );
+
+      allow create: if isAuthenticated() &&
+        request.resource.data.shopId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shopId;
+
+      allow update, delete: if false;
+    }
+
+    // Default rule: Explicitly deny all unmatched paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
