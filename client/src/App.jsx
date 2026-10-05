@@ -14,6 +14,7 @@ import AddProduct from './pages/AddProduct';
 import EditProduct from './pages/EditProduct';
 import POS from './pages/POS';
 import Sales from './pages/Sales';
+import Reports from './pages/Reports';
 
 /**
  * Guard that prevents users who already own a shop from accessing /setup-shop.
@@ -114,6 +115,14 @@ export default function App() {
               element={
                 <ProtectedRoute requireShop={true}>
                   <Sales />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <ProtectedRoute requireShop={true}>
+                  <Reports />
                 </ProtectedRoute>
               }
             />

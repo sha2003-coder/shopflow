@@ -156,14 +156,13 @@ export default function Sales() {
           >
             Sales
           </button>
-          <button
-            type="button"
-            onClick={() => alert('Reports module will be available in the upcoming release.')}
+          <Link
+            to="/reports"
             className="btn btn-secondary"
-            style={{ padding: '0.45rem 0.9rem', fontSize: '0.85rem', opacity: 0.6 }}
+            style={{ padding: '0.45rem 0.9rem', fontSize: '0.85rem', textDecoration: 'none' }}
           >
             Reports
-          </button>
+          </Link>
           <button
             type="button"
             onClick={async () => {

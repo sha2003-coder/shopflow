@@ -141,11 +141,11 @@ export default function Dashboard() {
           </button>
           <button
             type="button"
-            onClick={() => alert('Reports module will be available in the upcoming release.')}
+            onClick={() => navigate('/reports')}
             className="btn btn-secondary"
-            style={{ width: '100%', justifyContent: 'center', opacity: 0.65 }}
+            style={{ width: '100%', justifyContent: 'center' }}
           >
-            📊 Reports (Upcoming)
+            📊 Reports & Analytics
           </button>
         </div>
 
