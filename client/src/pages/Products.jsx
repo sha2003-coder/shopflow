@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import productService from '../services/productService';
 import ProductBarcode from '../components/ProductBarcode';
+import BulkStickerModal from '../components/BulkStickerModal';
 
 /**
  * Products Page Component (/products)
@@ -20,6 +21,10 @@ export default function Products() {
   // Barcode Modal State
   const [viewBarcodeProduct, setViewBarcodeProduct] = useState(null);
   const [barcodeToken, setBarcodeToken] = useState(null);
+
+  // Multi-label Sticker Selection State
+  const [selectedProductIds, setSelectedProductIds] = useState(new Set());
+  const [isBulkPrintOpen, setIsBulkPrintOpen] = useState(false);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -103,6 +108,41 @@ export default function Products() {
       console.error('[Products] Failed to retrieve token for barcode view:', err);
       setViewBarcodeProduct(product);
     }
+  };
+
+  // Multi-label selection handlers
+  const toggleSelectAll = () => {
+    if (selectedProductIds.size === products.length && products.length > 0) {
+      setSelectedProductIds(new Set());
+    } else {
+      setSelectedProductIds(new Set(products.map((p) => p.id)));
+    }
+  };
+
+  const toggleSelectProduct = (id) => {
+    setSelectedProductIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const selectedProducts = useMemo(() => {
+    return products.filter((p) => selectedProductIds.has(p.id));
+  }, [products, selectedProductIds]);
+
+  const handleOpenBulkPrint = async () => {
+    try {
+      const token = await getIdToken();
+      setBarcodeToken(token);
+    } catch (err) {
+      console.error('[Products] Failed to retrieve token for bulk print:', err);
+    }
+    setIsBulkPrintOpen(true);
   };
 
   return (
@@ -323,30 +363,85 @@ export default function Products() {
             )}
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '950px' }}>
-              <thead>
-                <tr
-                  style={{
-                    background: 'rgba(15, 23, 42, 0.8)',
-                    borderBottom: '1px solid var(--border-subtle)',
-                    color: 'var(--text-secondary)',
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                  }}
-                >
-                  <th style={{ padding: '1rem 1.25rem' }}>Product</th>
-                  <th style={{ padding: '1rem 1.25rem' }}>Category</th>
-                  <th style={{ padding: '1rem 1.25rem' }}>SKU</th>
-                  <th style={{ padding: '1rem 1.25rem' }}>Barcode</th>
-                  <th style={{ padding: '1rem 1.25rem' }}>Cost Price</th>
-                  <th style={{ padding: '1rem 1.25rem' }}>Selling Price</th>
-                  <th style={{ padding: '1rem 1.25rem' }}>Stock</th>
-                  <th style={{ padding: '1rem 1.25rem' }}>Status</th>
-                  <th style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
+          <div>
+            {/* Multi-label Selection Banner */}
+            {selectedProductIds.size > 0 && (
+              <div
+                className="no-print"
+                style={{
+                  background: 'rgba(15, 23, 42, 0.95)',
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  borderRadius: 'var(--radius-md, 8px)',
+                  padding: '0.75rem 1.25rem',
+                  marginBottom: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem',
+                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.35)',
+                }}
+              >
+                <div style={{ color: '#f8fafc', fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>🏷️</span>
+                  <span>
+                    <strong>{selectedProductIds.size}</strong> product{selectedProductIds.size > 1 ? 's' : ''} selected
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={handleOpenBulkPrint}
+                    className="btn btn-primary"
+                    style={{ padding: '0.45rem 1.1rem', fontSize: '0.85rem', fontWeight: 600 }}
+                  >
+                    🖨️ Print Selected Stickers ({selectedProductIds.size})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProductIds(new Set())}
+                    className="btn btn-secondary"
+                    style={{ padding: '0.45rem 0.85rem', fontSize: '0.85rem' }}
+                  >
+                    Clear Selection
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '950px' }}>
+                <thead>
+                  <tr
+                    style={{
+                      background: 'rgba(15, 23, 42, 0.8)',
+                      borderBottom: '1px solid var(--border-subtle)',
+                      color: 'var(--text-secondary)',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    <th style={{ width: '40px', padding: '1rem 0.75rem 1rem 1.25rem', textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={products.length > 0 && selectedProductIds.size === products.length}
+                        onChange={toggleSelectAll}
+                        style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#38bdf8' }}
+                        title="Select all products"
+                      />
+                    </th>
+                    <th style={{ padding: '1rem 1.25rem' }}>Product</th>
+                    <th style={{ padding: '1rem 1.25rem' }}>Category</th>
+                    <th style={{ padding: '1rem 1.25rem' }}>SKU</th>
+                    <th style={{ padding: '1rem 1.25rem' }}>Barcode</th>
+                    <th style={{ padding: '1rem 1.25rem' }}>Cost Price</th>
+                    <th style={{ padding: '1rem 1.25rem' }}>Selling Price</th>
+                    <th style={{ padding: '1rem 1.25rem' }}>Stock</th>
+                    <th style={{ padding: '1rem 1.25rem' }}>Status</th>
+                    <th style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
               <tbody>
                 {products.map((p, idx) => {
                   const stockNum = Number(p.stockQuantity);
@@ -359,10 +454,24 @@ export default function Products() {
                       key={p.id}
                       style={{
                         borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                        background: idx % 2 === 0 ? 'transparent' : 'rgba(255, 255, 255, 0.015)',
+                        background: selectedProductIds.has(p.id)
+                          ? 'rgba(56, 189, 248, 0.08)'
+                          : idx % 2 === 0
+                          ? 'transparent'
+                          : 'rgba(255, 255, 255, 0.015)',
                         transition: 'background 0.15s ease',
                       }}
                     >
+                      {/* Checkbox */}
+                      <td style={{ width: '40px', padding: '1rem 0.75rem 1rem 1.25rem', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedProductIds.has(p.id)}
+                          onChange={() => toggleSelectProduct(p.id)}
+                          style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#38bdf8' }}
+                        />
+                      </td>
+
                       {/* Name */}
                       <td style={{ padding: '1rem 1.25rem' }}>
                         <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.name}</div>
@@ -539,8 +648,9 @@ export default function Products() {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
 
       {/* View Barcode & Printable Label Modal */}
       {viewBarcodeProduct && (
@@ -592,7 +702,7 @@ export default function Products() {
                   gap: '0.5rem',
                 }}
               >
-                <span>🏷️</span> Barcode & Label
+                <span>🏷️</span> Product Barcode Sticker
               </h3>
               <button
                 type="button"
@@ -620,6 +730,17 @@ export default function Products() {
             />
           </div>
         </div>
+      )}
+
+      {/* Multiple-label Batch Print Modal */}
+      {isBulkPrintOpen && (
+        <BulkStickerModal
+          products={selectedProducts}
+          shopName={currentShop?.name || 'ShopFlow'}
+          currency={currentShop?.currency || 'Rs.'}
+          idToken={barcodeToken}
+          onClose={() => setIsBulkPrintOpen(false)}
+        />
       )}
     </div>
   );

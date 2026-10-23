@@ -212,6 +212,8 @@ export const downloadBarcodeImage = async (product, idToken, existingBlobUrl = n
   return filename;
 };
 
+export { getStickerFileName, downloadStickerPng } from '../utils/stickerRenderer';
+
 export default {
   createProduct,
   getProducts,
@@ -223,4 +225,6 @@ export default {
   getBarcodeImageBlobUrl,
   getBarcodeFileName,
   downloadBarcodeImage,
+  getStickerFileName,
+  downloadStickerPng,
 };
