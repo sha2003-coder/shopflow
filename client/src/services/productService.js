@@ -5,6 +5,7 @@
  */
 
 import API_BASE_URL from '../config/apiConfig';
+import { getStickerFileName, downloadStickerPng } from '../utils/stickerRenderer';
 
 /**
  * Internal authenticated request helper
@@ -212,7 +213,7 @@ export const downloadBarcodeImage = async (product, idToken, existingBlobUrl = n
   return filename;
 };
 
-export { getStickerFileName, downloadStickerPng } from '../utils/stickerRenderer';
+export { getStickerFileName, downloadStickerPng };
 
 export default {
   createProduct,
